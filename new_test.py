@@ -1,53 +1,57 @@
 import os
-import streamlit as st
 import pandas as pd
-from kaggle.api.kaggle_api_extended import KaggleApi
+from openpyxl import load_workbook
+import streamlit as st
 
-# Function to authenticate and download the Kaggle dataset
-def download_kaggle_dataset():
-    kaggle_username = st.secrets["kaggle"]["username"]
-    kaggle_key = st.secrets["kaggle"]["key"]
+# Streamlit page configuration
+st.title("Excel Data Appender")
 
-    # Set the environment variables for Kaggle API
-    os.environ["KAGGLE_USERNAME"] = kaggle_username
-    os.environ["KAGGLE_KEY"] = kaggle_key
+# Step 1: Upload the Excel file
+uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
-    # Authenticate the Kaggle API
-    api = KaggleApi()
-    api.authenticate()
+if uploaded_file:
+    # Load the workbook from the uploaded file
+    wb = load_workbook(uploaded_file)
+    sheet = wb.active
 
-    # Define the dataset identifier (replace with your dataset's identifier)
-    dataset_identifier = "shauvikbrahma/testttt"  # Replace with your dataset identifier
-    api.dataset_download_files(dataset_identifier, path="./", unzip=True)
+    # Step 2: Display the current data in the uploaded file (if any)
+    st.subheader("Current Data in the Excel File:")
+    df = pd.read_excel(uploaded_file)
+    st.write(df)
 
-    return "./test.xlsx"  # Path to the downloaded dataset
+    # Step 3: Create a form for user input (Name, Class)
+    with st.form(key="data_form"):
+        name = st.text_input("Enter Name")
+        class_value = st.text_input("Enter Class")
+        submit_button = st.form_submit_button("Add Data")
 
-# Streamlit App Interface
-st.title("Student Information Form")
+        if submit_button:
+            # Step 4: Append the new data to the Excel file
+            if name and class_value:
+                # Append the new row to the dataframe
+                new_row = {"Name": name, "Class": class_value}
+                df = df.append(new_row, ignore_index=True)
 
-# Form for inputting Name and Class
-with st.form(key='student_form'):
-    name = st.text_input("Name")
-    student_class = st.text_input("Class")
-    
-    submit_button = st.form_submit_button(label="Submit")
+                # Save the updated DataFrame back to the Excel file
+                temp_file_path = "/tmp/modified_file.xlsx"
+                df.to_excel(temp_file_path, index=False)
 
-# After form submission
-if submit_button:
-    st.write(f"Name: {name}")
-    st.write(f"Class: {student_class}")
+                # Provide a download link for the modified file
+                with open(temp_file_path, "rb") as f:
+                    st.download_button(
+                        label="Download Updated Excel",
+                        data=f,
+                        file_name="modified_excel.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                st.success(f"Successfully added '{name}' and '{class_value}' to the file.")
+            else:
+                st.error("Please fill in both fields (Name and Class).")
 
-    # Download and load Kaggle dataset
-    try:
-        dataset_path = download_kaggle_dataset()
-        st.write(f"Dataset downloaded and ready: {dataset_path}")
-        
-        # Load the Excel file into a dataframe
-        df = pd.read_excel(dataset_path)
-        
-        # Show the dataset content
-        st.write("Dataset content:")
-        st.dataframe(df)
-
-    except Exception as e:
-        st.error(f"An error occurred while fetching the dataset: {e}")
+# Instructions
+st.sidebar.subheader("Instructions")
+st.sidebar.write("""
+1. Upload your Excel file.
+2. Enter the data you want to append in the form and click 'Add Data'.
+3. Download the updated Excel file from the link provided after adding data.
+""")
