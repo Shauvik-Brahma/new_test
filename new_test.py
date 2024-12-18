@@ -1,57 +1,71 @@
 import os
 import pandas as pd
-from openpyxl import load_workbook
 import streamlit as st
+from openpyxl import load_workbook
+from kaggle.api.kaggle_api_extended import KaggleApi
+import json
 
-# Streamlit page configuration
-st.title("Excel Data Appender")
+# Step 1: Set up Kaggle API credentials (this is usually done once, here for completeness)
+kaggle_api_file = r"C:\Users\Shauvik Brahma\Desktop\.kaggle\kaggle.json"  # Use raw string to avoid escape issues
+with open(kaggle_api_file, "r") as f:
+    kaggle_credentials = json.load(f)
 
-# Step 1: Upload the Excel file
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+os.environ["KAGGLE_USERNAME"] = kaggle_credentials["username"]
+os.environ["KAGGLE_KEY"] = kaggle_credentials["key"]
 
-if uploaded_file:
-    # Load the workbook from the uploaded file
-    wb = load_workbook(uploaded_file)
+api = KaggleApi()
+api.authenticate()
+
+# Step 2: Download the dataset from Kaggle
+dataset_identifier = "shauvikbrahma/testttt"
+api.dataset_download_files(dataset_identifier, path="./", unzip=True)
+
+# Step 3: List files and find the Excel file in the downloaded dataset
+downloaded_files = os.listdir("./")
+excel_file = None
+for file in downloaded_files:
+    if file.endswith(".xlsx"):
+        excel_file = file
+        break
+
+# Step 4: If Excel file exists, proceed with the Streamlit form for adding data
+if excel_file:
+    # Load the existing workbook
+    wb = load_workbook(excel_file)
     sheet = wb.active
 
-    # Step 2: Display the current data in the uploaded file (if any)
-    st.subheader("Current Data in the Excel File:")
-    df = pd.read_excel(uploaded_file)
-    st.write(df)
+    # Step 5: Create a form to input Name and Class
+    st.title("Append Data to Kaggle Excel Dataset")
 
-    # Step 3: Create a form for user input (Name, Class)
-    with st.form(key="data_form"):
+    with st.form(key="append_form"):
         name = st.text_input("Enter Name")
         class_value = st.text_input("Enter Class")
         submit_button = st.form_submit_button("Add Data")
 
         if submit_button:
-            # Step 4: Append the new data to the Excel file
             if name and class_value:
-                # Append the new row to the dataframe
-                new_row = {"Name": name, "Class": class_value}
-                df = df.append(new_row, ignore_index=True)
+                # Step 6: Append the new row to the Excel sheet
+                new_row = [name, class_value]
+                sheet.append(new_row)
 
-                # Save the updated DataFrame back to the Excel file
-                temp_file_path = "/tmp/modified_file.xlsx"
-                df.to_excel(temp_file_path, index=False)
+                # Step 7: Save the workbook after appending the data
+                wb.save(excel_file)
 
-                # Provide a download link for the modified file
-                with open(temp_file_path, "rb") as f:
-                    st.download_button(
-                        label="Download Updated Excel",
-                        data=f,
-                        file_name="modified_excel.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                st.success(f"Successfully added '{name}' and '{class_value}' to the file.")
+                st.success(f"Successfully added '{name}' and '{class_value}' to the dataset.")
+
+                # Step 8: Display the updated DataFrame in Streamlit
+                df = pd.read_excel(excel_file)
+                st.subheader("Updated Data in the Excel File:")
+                st.write(df)
+
             else:
-                st.error("Please fill in both fields (Name and Class).")
+                st.error("Both Name and Class are required fields.")
 
-# Instructions
+# Instructions on the sidebar
 st.sidebar.subheader("Instructions")
 st.sidebar.write("""
-1. Upload your Excel file.
-2. Enter the data you want to append in the form and click 'Add Data'.
-3. Download the updated Excel file from the link provided after adding data.
+1. The app will automatically download your Kaggle dataset.
+2. You can input data through the form (Name, Class).
+3. After submitting, the data will be appended to the Kaggle Excel dataset.
+4. The updated data will be displayed, and the file will be saved with the new row.
 """)
