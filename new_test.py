@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 from kaggle.api.kaggle_api_extended import KaggleApi
 
-# Function to authenticate and download the dataset
+# Function to authenticate and download the Kaggle dataset
 def download_kaggle_dataset():
     kaggle_username = st.secrets["kaggle"]["username"]
     kaggle_key = st.secrets["kaggle"]["key"]
