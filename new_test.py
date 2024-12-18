@@ -3,12 +3,9 @@ import pandas as pd
 import streamlit as st
 from openpyxl import load_workbook
 from kaggle.api.kaggle_api_extended import KaggleApi
-import json
 
-# Step 1: Set up Kaggle API credentials (this is usually done once, here for completeness)
-kaggle_api_file = r"C:\Users\Shauvik Brahma\Desktop\.kaggle\kaggle.json"  # Use raw string to avoid escape issues
-with open(kaggle_api_file, "r") as f:
-    kaggle_credentials = json.load(f)
+# Step 1: Access Kaggle API credentials from Streamlit secrets
+kaggle_credentials = st.secrets["kaggle"]
 
 os.environ["KAGGLE_USERNAME"] = kaggle_credentials["username"]
 os.environ["KAGGLE_KEY"] = kaggle_credentials["key"]
@@ -60,6 +57,8 @@ if excel_file:
 
             else:
                 st.error("Both Name and Class are required fields.")
+else:
+    st.error("No Excel file found in the downloaded dataset.")
 
 # Instructions on the sidebar
 st.sidebar.subheader("Instructions")
